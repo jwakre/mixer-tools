@@ -23,7 +23,7 @@ import (
 )
 
 // CurrentStateVersion is the current revision for the state file structure
-const CurrentStateVersion = "1.0"
+const CurrentStateVersion = "1.1"
 
 func (state *MixState) parseVersionAndConvert() error {
 	// Reset version for files without versioning
