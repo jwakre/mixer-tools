@@ -495,10 +495,10 @@ func installBundleToFull(packagerCmd []string, buildVersionDir string, bundle *b
 		}
 
 		// Retry RPM downloads to avoid timeout failures due to slow network
-		_, err = downloadRpms(packagerCmd, rpmList, baseDir, downloadRetries)
+		/*_, err = downloadRpms(packagerCmd, rpmList, baseDir, downloadRetries)
 		if err != nil {
 			return err
-		}
+		}*/
 
 		args := merge(packagerCmd, "--installroot="+baseDir, "install")
 		args = append(args, rpmList...)
@@ -562,10 +562,23 @@ func buildFullChroot(b *Builder, set *bundleSet, packagerCmd []string, buildVers
 	if err := clearDNFCache(packagerCmd); err != nil {
 		return err
 	}
+	baseDir := filepath.Join(buildVersionDir, "full")
+	rpmList := []string{}
 	fmt.Println("Installing all bundles to full chroot")
 	totalBundles := len(*set)
 	fullDir := filepath.Join(buildVersionDir, "full")
 	i := 0
+	for _, bundle := range *set {
+		for p := range bundle.DirectPackages {
+			rpmList = append(rpmList, p)
+		}
+
+	}
+	// Retry RPM downloads to avoid timeout failures due to slow network
+	_, err := downloadRpms(packagerCmd, rpmList, baseDir, downloadRetries)
+	if err != nil {
+		return err
+	}
 	for _, bundle := range *set {
 		i++
 		fmt.Printf("[%d/%d] %s\n", i, totalBundles, bundle.Name)
