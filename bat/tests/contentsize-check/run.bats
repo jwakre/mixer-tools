@@ -12,6 +12,7 @@ setup() {
 }
 
 @test "Compare calculated contentsize with actual" {
+  exit 1
   manifestPrefix=update/www/10/Manifest.
   manifests=$(sed -n 's/^[M,I]\..*\t//p' "${manifestPrefix}"MoM)
 
