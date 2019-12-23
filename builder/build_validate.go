@@ -115,10 +115,10 @@ func (b *Builder) CheckManifestCorrectness(fromVer, toVer, downloadRetries int, 
 	if fromVer >= toVer {
 		return fmt.Errorf("From version must be less than to version")
 	}
-	
+
 	// Suppress Stdout so that it doesn't clutter the results
 	stdOut := os.Stdout
-	os.Stdout,_ = os.Open(os.DevNull)
+	os.Stdout, _ = os.Open(os.DevNull)
 	defer func() {
 		os.Stdout = stdOut
 	}()
