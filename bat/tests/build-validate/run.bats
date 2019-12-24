@@ -60,9 +60,9 @@ setup() {
   [[ "$output" =~ "Deleted bundles: 0" ]]
 
   # testbundle2 is added. testbundle1 and os-core are modified
-  [[ "$output" =~ "| testbundle1" ]]
   [[ "$output" =~ "| testbundle2" ]]
   [[ "$output" =~ "| os-core" ]]
+  [[ "$output" =~ "| testbundle1" ]]
 }
 
 @test "MCA compare to +10" {
@@ -90,10 +90,11 @@ setup() {
   # is performed
   [[ $output =~ "WARNING: If this is not a +10 to +20 comparison, expected file changes are missing from os-core/os-core-update" ]]
   [[ $output =~ "** Summary: No errors detected in manifests" ]]
+  [[ $output =~ "Minversion bump detected" ]]
   [[ $output =~ "Added bundles: 0" ]]
   [[ $output =~ "Changed bundles: 0" ]]
   [[ $output =~ "Deleted bundles: 0" ]]
-  [[ $output =~ "** Minversion bump detected" ]]
+  
 }
 
 @test "MCA standard comparison error handling" {
