@@ -13,8 +13,20 @@ setup() {
   mixer-mixversion-update 20
   mixer-build-all
 
+  # Make directories ahead of the mix version that should be cleaned.
+  sudo mkdir "$BATS_TEST_DIRNAME"/update/www/30
+  sudo mkdir "$BATS_TEST_DIRNAME"/update/image/30
+
   # Rebuild v20 with --clean
-  run sudo mixer build all --clean
+  run sudo mixer build bundles --clean
+  [[ $status -eq 0 ]]
+
+  # Check that directories greater than or equal to the mix version were erased
+  [[ ! -d "$BATS_TEST_DIRNAME"/update/www/20 ]]
+  [[ ! -d "$BATS_TEST_DIRNAME"/update/www/30 ]]
+  [[ ! -d "$BATS_TEST_DIRNAME"/update/image/30 ]]
+
+  run sudo mixer build update
   [[ $status -eq 0 ]]
 
   mom="$BATS_TEST_DIRNAME"/update/www/20/Manifest.MoM

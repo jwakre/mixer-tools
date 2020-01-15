@@ -15,10 +15,12 @@
 package builder
 
 import (
+	"io/ioutil"
 	"net/url"
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -47,6 +49,58 @@ func (b *Builder) buildUpstreamURL(subpath string) (string, error) {
 	}
 
 	return base.String(), nil
+}
+
+// cleanMix removes image and output (www) subdirectories that were generated
+// for mixes greater than or equal to the current mixversion
+func (b *Builder) cleanMix() error {
+	mixVer, err := strconv.Atoi(b.MixVer)
+	if err != nil {
+		return err
+	}
+
+	outputDir := filepath.Join(b.Config.Builder.ServerStateDir, "www")
+	if err = cleanMixDir(outputDir, mixVer); err != nil {
+		return err
+	}
+
+	imageDir := filepath.Join(b.Config.Builder.ServerStateDir, "image")
+	return cleanMixDir(imageDir, mixVer)
+}
+
+// cleanMixDir removes cleanDir's subdirectories that are numbered greater
+// than or equal to cleanVer. This function is intended to be used to clean
+// the output (www) or image directories.
+func cleanMixDir(cleanDir string, cleanVer int) error {
+	if _, err := os.Stat(cleanDir); os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	files, err := ioutil.ReadDir(cleanDir)
+	if err != nil {
+		return err
+	}
+
+	// Remove subdirectories numbered greater than or equal to clearVer
+	for _, f := range files {
+		if !f.IsDir() {
+			continue
+		}
+
+		dirVer, err := strconv.Atoi(f.Name())
+		if err != nil {
+			continue
+		}
+
+		if dirVer >= cleanVer {
+			if err = os.RemoveAll(filepath.Join(cleanDir, f.Name())); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // DownloadFileFromUpstreamAsString will download a file from the Upstream URL
