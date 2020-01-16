@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/clearlinux/mixer-tools/helpers"
+	"github.com/clearlinux/mixer-tools/swupd"
 	"github.com/pkg/errors"
 )
 
@@ -988,17 +989,93 @@ src=%s
 	addOsCoreSpecialFiles(osCore)
 	addUpdateBundleSpecialFiles(b, updateBundle)
 
+	// install all bundles in the set (including os-core) to the full chroot
+	err = buildFullChroot(b, &set, packagerCmd, buildVersionDir, version, downloadRetries, numWorkers)
+	if err != nil {
+		return err
+	}
+
+	// bundle chroots: update/image/chroots/<name>
+	fullDir := filepath.Join(buildVersionDir, "full")
+	for _, bundle := range set {
+		//TODO: have directory in b......
+		//curPath := path.Join(b.Config.Mixer.LocalBundleDir, "../content-bundles/"+bundle.Name)
+		for curPath := range bundle.contentChroots {
+			if _, err := os.Stat(curPath); os.IsNotExist(err) {
+				continue
+			}
+
+			// does not follow symlinks, good/bad? I think don't follow - copy the link
+			err := filepath.Walk(curPath, func(path string, fi os.FileInfo, err error) error {
+				if err != nil {
+					fmt.Printf("Failed: %s", err.Error())
+				}
+
+				bundleChrootFile := strings.TrimPrefix(path, curPath)
+				fullChrootFile := filepath.Join(fullDir, bundleChrootFile)
+
+				if bundleChrootFile == "" {
+					return nil
+				}
+
+				// Verify that there are no file conflicts
+				// stat or lstat?
+				if fullInfo, err := os.Stat(fullChrootFile); err == nil {
+					if fullInfo.IsDir() && fi.IsDir() {
+						if fullInfo.Mode().Perm() != fi.Mode().Perm() {
+							return errors.Errorf("Directory permission mismatch: %s, %s", fullChrootFile, path)
+						}
+						return nil
+					}
+
+					h1, err := swupd.Hashcalc(fullChrootFile)
+					if err != nil {
+						return err
+					}
+					h2, err := swupd.Hashcalc(path)
+					if err != nil {
+						return err
+					}
+					if swupd.HashEquals(h1, h2) {
+						return errors.Errorf("Chroot File conflict: %s, %s: %s", fullChrootFile, path, bundleChrootFile)
+					}
+					return nil
+				}
+				bundle.Files[bundleChrootFile] = true
+
+				if fi.IsDir() {
+					//	fmt.Printf("Dir: %s\n", path)
+					return os.Mkdir(fullChrootFile, 0755)
+				}
+
+				bundle.Files[bundleChrootFile] = true
+
+				if fi.IsDir() {
+					//	fmt.Printf("Dir: %s\n", path)
+					return os.Mkdir(fullChrootFile, 0755)
+				}
+
+				// TODO: Fails on symlinks to directories... (it follows when should copy link)
+				//fmt.Printf("File: %s\n", path)
+				//shutil.copyFile(path, fullChrootFile, false)
+				//return nil
+				err2 := helpers.CopyFileWithOptions(fullChrootFile, path, false, false)
+				if err2 != nil {
+					fmt.Printf("Err2: %s\n", err2.Error())
+				}
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	for _, bundle := range set {
 		err = writeBundleInfo(bundle, filepath.Join(buildVersionDir, bundle.Name+"-info"))
 		if err != nil {
 			return err
 		}
-	}
-
-	// install all bundles in the set (including os-core) to the full chroot
-	err = buildFullChroot(b, &set, packagerCmd, buildVersionDir, version, downloadRetries, numWorkers)
-	if err != nil {
-		return err
 	}
 
 	// now that all dnf/yum/rpm operations have completed
