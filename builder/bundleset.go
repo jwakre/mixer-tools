@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -31,7 +32,8 @@ type bundle struct {
 	Files map[string]bool
 
 	/* hidden property, not to be included in file usr/share/clear/allbundles */
-	AllRpms map[string]packageMetadata `json:"-"`
+	AllRpms        map[string]packageMetadata `json:"-"`
+	contentChroots map[string]bool            `json:"-"`
 }
 
 type bundleSet map[string]*bundle
@@ -306,7 +308,7 @@ func parseBundle(contents []byte) (*bundle, error) {
 
 	var b bundle
 	var duplicate bool
-	var includes, packages, optional []string
+	var includes, packages, optional, content []string
 
 	line := 0
 	for scanner.Scan() {
@@ -355,6 +357,15 @@ func parseBundle(contents []byte) (*bundle, error) {
 				return nil, fmt.Errorf("Invalid bundle name %q in line %d", text, line)
 			}
 			optional = append(optional, text)
+		} else if strings.HasPrefix(text, "content(") {
+			if !strings.HasSuffix(text, ")") {
+				return nil, fmt.Errorf("Missing end parenthesis in line %d: %q", line, text)
+			}
+			text = text[8 : len(text)-1]
+			if _, err := os.Stat(text); err != nil {
+				return nil, fmt.Errorf("Invalid bundle name %q in line %d", text, line)
+			}
+			content = append(content, text)
 		} else {
 			if !validPackageNameRegex.MatchString(text) {
 				return nil, fmt.Errorf("Invalid package name %q in line %d", text, line)
@@ -385,6 +396,11 @@ func parseBundle(contents []byte) (*bundle, error) {
 	b.DirectPackages = make(map[string]bool)
 	for _, p := range packages {
 		b.DirectPackages[p] = true
+	}
+
+	b.contentChroots = make(map[string]bool)
+	for _, c := range content {
+		b.contentChroots[c] = true
 	}
 
 	return &b, nil
