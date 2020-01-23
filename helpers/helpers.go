@@ -195,17 +195,35 @@ func UnpackFile(file string, dest string) error {
 }
 
 // CopyFile copies a file, overwriting the destination if it exists.
-func CopyFile(dest string, src string) error {
-	return copyFileWithFlags(dest, src, os.O_RDWR|os.O_CREATE|os.O_TRUNC)
+func CopyFile(dest, src string) error {
+	return copyFileWithFlags(dest, src, os.O_RDWR|os.O_CREATE|os.O_TRUNC, true, true)
+}
+
+// CopyFileWithOptions copies a file, overwriting the destination if it exist and allows
+// options to be set for following links or syncing to disk.
+func CopyFileWithOptions(dest, src string, resolveLinks, sync bool) error {
+	return copyFileWithFlags(dest, src, os.O_RDWR|os.O_CREATE|os.O_TRUNC, resolveLinks, sync)
 }
 
 // CopyFileNoOverwrite copies a file only if the destination file does not exist.
-func CopyFileNoOverwrite(dest string, src string) error {
-	return copyFileWithFlags(dest, src, os.O_RDWR|os.O_CREATE|os.O_EXCL)
+func CopyFileNoOverwrite(dest, src string) error {
+	return copyFileWithFlags(dest, src, os.O_RDWR|os.O_CREATE|os.O_EXCL, true, true)
 }
 
 // copyFileWithFlags General purpose copy file function
-func copyFileWithFlags(dest string, src string, flags int) error {
+func copyFileWithFlags(dest, src string, flags int, resolveLinks, sync bool) error {
+	if !resolveLinks {
+		srcStat, err := os.Lstat(src)
+		if err != nil {
+			return err
+		}
+
+		if (srcStat.Mode() & os.ModeSymlink) == os.ModeSymlink {
+			fmt.Printf("CREATING SYMLINK: src: %s, dest: %s!!!!!!!!!!!!!!!!!!!!!!!\n", src, dest)
+			return os.Symlink(src, dest)
+		}
+	}
+
 	source, err := os.Open(src)
 	if err != nil {
 		return err
@@ -227,9 +245,11 @@ func copyFileWithFlags(dest string, src string, flags int) error {
 		return err
 	}
 
-	err = destination.Sync()
-	if err != nil {
-		return err
+	if sync {
+		err = destination.Sync()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
