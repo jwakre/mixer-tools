@@ -519,12 +519,25 @@ func createClearDir(chrootDir, version string) error {
 	}
 
 	// Writing special files identifying the version in os-core.
-	err = ioutil.WriteFile(filepath.Join(clearDir, "version"), []byte(version), 0644)
-	if err != nil {
+	versionFile := filepath.Join(clearDir, "version")
+	if _, err = os.Lstat(versionFile); os.IsNotExist(err) {
+		if err = ioutil.WriteFile(versionFile, []byte(version), 0644); err != nil {
+			return err
+		}
+	} else if err != nil {
 		return err
 	}
 	versionstamp := fmt.Sprint(time.Now().Unix())
-	return ioutil.WriteFile(filepath.Join(clearDir, "versionstamp"), []byte(versionstamp), 0644)
+
+	versionstampFile := filepath.Join(clearDir, "versionstamp")
+	if _, err = os.Lstat(versionstampFile); os.IsNotExist(err) {
+		if err = ioutil.WriteFile(versionstampFile, []byte(versionstamp), 0644); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+	return nil
 }
 
 func buildOsCore(b *Builder, packagerCmd []string, chrootDir, version string) error {
@@ -550,29 +563,49 @@ func genUpdateBundleSpecialFiles(chrootDir string, b *Builder) error {
 		return err
 	}
 	cURLBytes := []byte(b.Config.Swupd.ContentURL)
-	if err := ioutil.WriteFile(filepath.Join(swupdDir, "contenturl"), cURLBytes, 0644); err != nil {
+	contentURLFile := filepath.Join(swupdDir, "contenturl")
+	if _, err := os.Lstat(contentURLFile); os.IsNotExist(err) {
+		if err = ioutil.WriteFile(contentURLFile, cURLBytes, 0644); err != nil {
+			return err
+		}
+	} else if err != nil {
 		return err
 	}
+
 	vURLBytes := []byte(b.Config.Swupd.VersionURL)
-	if err := ioutil.WriteFile(filepath.Join(swupdDir, "versionurl"), vURLBytes, 0644); err != nil {
+	versionURLFile := filepath.Join(swupdDir, "versionurl")
+	if _, err := os.Lstat(versionURLFile); os.IsNotExist(err) {
+		if err = ioutil.WriteFile(versionURLFile, vURLBytes, 0644); err != nil {
+			return err
+		}
+	} else if err != nil {
 		return err
 	}
 
 	// Only copy the certificate into the mix if it exists
 	if _, err := os.Stat(b.Config.Builder.Cert); err == nil {
 		certdir := filepath.Join(chrootDir, "/usr/share/clear/update-ca")
-		err = os.MkdirAll(certdir, 0755)
-		if err != nil {
-			return err
-		}
 		chrootcert := filepath.Join(certdir, "Swupd_Root.pem")
-		err = helpers.CopyFile(chrootcert, b.Config.Builder.Cert)
-		if err != nil {
+		if _, err = os.Lstat(chrootcert); os.IsNotExist(err) {
+			if err = os.MkdirAll(certdir, 0755); err != nil {
+				return err
+			}
+			if err = helpers.CopyFile(chrootcert, b.Config.Builder.Cert); err != nil {
+				return err
+			}
+		} else if err != nil {
 			return err
 		}
 	}
-
-	return ioutil.WriteFile(filepath.Join(swupdDir, "format"), []byte(b.State.Mix.Format), 0644)
+	formatFile := filepath.Join(swupdDir, "format")
+	if _, err := os.Lstat(formatFile); os.IsNotExist(err) {
+		if err = ioutil.WriteFile(formatFile, []byte(b.State.Mix.Format), 0644); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+	return nil
 }
 
 func downloadRpms(packagerCmd, rpmList []string, baseDir string, maxRetries int) (*bytes.Buffer, error) {
@@ -1084,6 +1117,15 @@ src=%s
 // createVersionsFile creates a file that contains all the packages available for a specific
 // version. It uses one chroot to query information from the repositories using dnf.
 func createVersionsFile(baseDir string, packagerCmd []string) error {
+	versionsFile := filepath.Join(baseDir, "versions")
+
+	// Do not generate versions file when it already exists
+	if _, err := os.Lstat(versionsFile); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+
 	args := merge(packagerCmd,
 		"--installroot="+filepath.Join(baseDir, "full"),
 		"--quiet",
@@ -1175,7 +1217,7 @@ func createVersionsFile(baseDir string, packagerCmd []string) error {
 		return ii.name < jj.name
 	})
 
-	f, err := os.Create(filepath.Join(baseDir, "versions"))
+	f, err := os.Create(versionsFile)
 	if err != nil {
 		return err
 	}
