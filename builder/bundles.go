@@ -401,15 +401,26 @@ func resolvePackages(numWorkers int, set bundleSet, packagerCmd []string, emptyD
 			for p := range bundle.AllPackages {
 				queryString = append(queryString, p)
 			}
+
 			bundle.AllRpms = make(map[string]packageMetadata)
 			// ignore error from the --assumeno install. It is an error every time because
 			// --assumeno forces the install command to "abort" and return a non-zero exit
 			// status. This exit status is 1, which is the same as any other dnf install
 			// error. Fortunately if this is a different error than we expect, it should
 			// fail in the actual install to the full chroot.
-			outBuf, _ := helpers.RunCommandOutputEnv(queryString[0], queryString[1:], []string{"LC_ALL=en_US.UTF-8"})
+			outBuf, error1 := helpers.RunCommandOutputEnv(queryString[0], queryString[1:], []string{"LC_ALL=en_US.UTF-8"})
+
 			rpm, e := repoPkgFromNoopInstall(outBuf.String())
 			if !isEmptyBundle(bundle) && e != nil {
+				if error1 != nil {
+					fmt.Printf("ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
+					fmt.Println(error1.Error())
+				}
+
+				fmt.Printf("\n")
+				fmt.Println(queryString)
+				fmt.Printf("\n")
+
 				e = errors.Wrapf(e, bundle.Name)
 				fmt.Println(e)
 				errorCh <- e
@@ -1031,19 +1042,34 @@ src=%s
 	fmt.Printf("Packager command-line: %s\n", strings.Join(packagerCmd, " "))
 
 	numWorkers := b.NumBundleWorkers
-	emptyDir, err := ioutil.TempDir("", "MixerEmptyDirForNoopInstall")
+	/*emptyDir, err := ioutil.TempDir("", "MixerEmptyDirForNoopInstall")
 	if err != nil {
 		return err
 	}
 	defer func() {
 		_ = os.RemoveAll(emptyDir)
-	}()
+	}()*/
+	emptyDir := filepath.Join(buildVersionDir, "full1")
+	//emptyDir := "/tmp/foobar"
+	os.RemoveAll(emptyDir)
+	err = os.MkdirAll(emptyDir, 0755)
+	if err != nil {
+		return err
+	}
+
+	t1 := time.Now()
 
 	// bundleRepoPkgs is a map of bundles -> map of repos -> list of packageMetadata
 	bundleRepoPkgs, err := resolvePackages(numWorkers, set, packagerCmd, emptyDir)
 	if err != nil {
 		return err
 	}
+
+	t2 := time.Now()
+
+	diff := t2.Sub(t1)
+	fmt.Printf("TIME DIFF: %s\n", diff)
+	return nil
 
 	err = resolveFiles(numWorkers, set, bundleRepoPkgs, packagerCmd)
 	if err != nil {
