@@ -1083,9 +1083,27 @@ src=%s
 		_ = os.RemoveAll(emptyDir)
 	}()
 
+	timer := &stopWatch{w: os.Stdout}
+	defer timer.WriteSummary(os.Stdout)
+
+	timer.Start("Resolve Packages!!!")
+	if err := b.NewDNFConfIfNeeded(); err != nil {
+		return err
+	}
+
 	// bundleRepoPkgs is a map of bundles -> map of repos -> list of packageMetadata
 	bundleRepoPkgs, err := resolvePackages(numWorkers, set, packagerCmd, emptyDir)
 	if err != nil {
+		return err
+	}
+
+	timer.Stop()
+
+	timer = &stopWatch{w: os.Stdout}
+	defer timer.WriteSummary(os.Stdout)
+
+	timer.Start("Resolve Files!!!")
+	if err := b.NewDNFConfIfNeeded(); err != nil {
 		return err
 	}
 
@@ -1093,6 +1111,9 @@ src=%s
 	if err != nil {
 		return err
 	}
+
+	timer.Stop()
+	return nil
 
 	updateBundle := set[b.Config.Swupd.Bundle]
 	var osCore *bundle
