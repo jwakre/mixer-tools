@@ -31,6 +31,7 @@ import (
 
 	"github.com/clearlinux/mixer-tools/config"
 	"github.com/clearlinux/mixer-tools/helpers"
+	"github.com/clearlinux/mixer-tools/stopwatch"
 	"github.com/clearlinux/mixer-tools/swupd"
 	"github.com/pkg/errors"
 )
@@ -244,7 +245,7 @@ func (b *Builder) BuildBundles(template *x509.Certificate, privkey *rsa.PrivateK
 	// This takes the template and adds the relevant local rpm repo path if needed
 	fmt.Println("Building bundles...")
 
-	timer := &stopWatch{w: os.Stdout}
+	timer := &stopwatch.StopWatch{W: os.Stdout}
 	defer timer.WriteSummary(os.Stdout)
 
 	timer.Start("BUILD BUNDLES")
@@ -348,7 +349,7 @@ func (b *Builder) BuildUpdate(params UpdateParameters) error {
 		return errors.Wrapf(err, "couldn't create the format directory")
 	}
 
-	timer := &stopWatch{w: os.Stdout}
+	timer := &stopwatch.StopWatch{W: os.Stdout}
 	defer timer.WriteSummary(os.Stdout)
 
 	err = b.buildUpdateContent(params, timer)

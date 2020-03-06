@@ -1,4 +1,4 @@
-package builder
+package stopwatch
 
 import (
 	"io"
@@ -6,12 +6,12 @@ import (
 	"time"
 )
 
-// stopWatch keeps track of a sequence of durations. Use Start and Stop to mark the sections, then
+// StopWatch keeps track of a sequence of durations. Use Start and Stop to mark the sections, then
 // write the final result with WriteSummary.
-type stopWatch struct {
+type StopWatch struct {
 	entries []stopWatchEntry
 	t       time.Time
-	w       io.Writer
+	W       io.Writer
 }
 
 type stopWatchEntry struct {
@@ -20,9 +20,9 @@ type stopWatchEntry struct {
 	used bool
 }
 
-func (sw *stopWatch) Start(name string) {
-	logger := log.New(sw.w, "", 0)
-	if sw.w != nil {
+func (sw *StopWatch) Start(name string) {
+	logger := log.New(sw.W, "", 0)
+	if sw.W != nil {
 		if len(sw.entries) > 0 {
 			logger.Println()
 
@@ -40,7 +40,7 @@ func (sw *stopWatch) Start(name string) {
 	sw.t = time.Now()
 }
 
-func (sw *stopWatch) Stop() {
+func (sw *StopWatch) Stop() {
 	if len(sw.entries) == 0 {
 		return
 	}
@@ -54,7 +54,7 @@ func (sw *stopWatch) Stop() {
 	e.d = time.Since(sw.t)
 }
 
-func (sw *stopWatch) WriteSummary(w io.Writer) {
+func (sw *StopWatch) WriteSummary(w io.Writer) {
 	logger := log.New(w, "", 0)
 	if len(sw.entries) == 0 {
 		return

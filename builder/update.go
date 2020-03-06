@@ -25,11 +25,12 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/clearlinux/mixer-tools/stopwatch"
 	"github.com/clearlinux/mixer-tools/swupd"
 	"github.com/pkg/errors"
 )
 
-func (b *Builder) buildUpdateContent(params UpdateParameters, timer *stopWatch) error {
+func (b *Builder) buildUpdateContent(params UpdateParameters, timer *stopwatch.StopWatch) error {
 	var err error
 
 	// TODO: move this to parsing configuration / parameter time.
@@ -181,7 +182,7 @@ func (b *Builder) buildUpdateContent(params UpdateParameters, timer *stopWatch) 
 	return nil
 }
 
-func (b *Builder) createZeroPack(timer *stopWatch, bundles []*swupd.File, outputDir string) error {
+func (b *Builder) createZeroPack(timer *stopwatch.StopWatch, bundles []*swupd.File, outputDir string) error {
 	timer.Start("CREATE ZERO PACKS")
 	fmt.Printf("Using %d workers\n", b.NumDeltaWorkers)
 
