@@ -22,6 +22,8 @@ import (
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/clearlinux/mixer-tools/stopwatch"
 )
 
 // UpdateInfo contains the meta information for the current update
@@ -172,12 +174,19 @@ func processBundles(ui UpdateInfo, c config, numWorkers int) ([]*Manifest, error
 		}
 	}
 
+	timer := &stopwatch.StopWatch{W: os.Stdout}
+	defer timer.WriteSummary(os.Stdout)
+
+	timer.Start("BUILD Adding manifest file records...")
+
 	// Add manifest file records. Important this is done after all includes
 	// have been read so nested subtraction works.
 	fmt.Println("Adding manifest file records...")
 	if err = addAllManifestFiles(tmpManifests, ui, c, numWorkers); err != nil {
 		return nil, err
 	}
+	timer.Stop()
+	timer.Start("Detecting manifest changes...")
 
 	// Need old MoM to get version of last bundle manifest
 	oldMoMPath := filepath.Join(c.outputDir, fmt.Sprint(ui.previous), "Manifest.MoM")
@@ -219,10 +228,12 @@ func processBundles(ui UpdateInfo, c config, numWorkers int) ([]*Manifest, error
 		// If we made it this far, this bundle has a change and should be written
 		newManifests = append(newManifests, bundle)
 	}
+	timer.Stop()
+	timer.Start("maximizeFull")
 
 	// maximize full manifest while all the manifests are still sorted by name
 	maximizeFull(newFull, newManifests)
-
+	timer.Stop()
 	return newManifests, nil
 }
 
