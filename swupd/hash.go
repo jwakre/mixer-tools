@@ -15,6 +15,7 @@
 package swupd
 
 import (
+	"bufio"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -184,7 +185,9 @@ func NewHash(info *HashFileInfo) (*Hash, error) {
 
 // Write more data to the hash being calculated.
 func (h *Hash) Write(p []byte) (n int, err error) {
-	return h.hmac.Write(p)
+	bw := bufio.NewWriterSize(h.hmac, len(p))
+	return bw.Write(p)
+	//return h.hmac.Write(p)
 }
 
 // Sum returns the string containing the Hash calculated using swupd
